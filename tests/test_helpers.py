@@ -46,7 +46,8 @@ class HelpersTests(unittest.TestCase):
         rows=[{'user_id':i,'username':'x'*32,'name':'n'*60,'schedule':'21:00–22:00','role':'ranked','status':'approved'} for i in range(10)]
         text=panel_text(rows,'hawkuy','18.10.2026',{},'#2QGJPJLJQG')
         self.assertLess(len(text),4096)
-        self.assertIn('ручной ввод',text)
+        self.assertNotIn('Elo',text)
+        self.assertIn('⚔️ Ranked',text)
         self.assertEqual(text.count(' ⏳'),10)
         self.assertNotIn('highestPowerPlayPoints',text)
 

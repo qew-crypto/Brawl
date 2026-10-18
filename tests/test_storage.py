@@ -30,6 +30,22 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(other.flow(1)['payload']['uid'],25)
         other.db.close()
 
+    def test_migrate_elo_settings_without_removing_ranked_role(self):
+        import json
+        self.s.edit_app(1,role='ranked')
+        self.s.set('elo','9000')
+        self.s.set('best_elo','9500')
+        self.s.set('stats',json.dumps({'trophies':39420,'elo':9000,'ranked_excerpt':{'x':1},'api_keys':['tag']}))
+        self.s.set_flow(1,'elo')
+        self.s.run('PRAGMA user_version=2')
+        other=Store(self.path)
+        self.assertEqual(other.setting('elo'),'')
+        self.assertEqual(other.setting('best_elo'),'')
+        self.assertIsNone(other.flow(1))
+        self.assertEqual(json.loads(other.setting('stats')),{'trophies':39420})
+        self.assertEqual(other.app(1)['role'],'ranked')
+        other.db.close()
+
     def test_unknown_column(self):
         with self.assertRaises(ValueError):
             self.s.edit_app(1, arbitrary='bad')

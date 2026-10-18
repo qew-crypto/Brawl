@@ -29,12 +29,19 @@ class PlayerStatsTests(unittest.TestCase):
         result=extract_player({'trophies':1,'highestPowerPlayPoints':9000,'brawlers':[{'rank':35}]})
         self.assertNotIn('elo',result)
         self.assertNotIn('best_elo',result)
-        self.assertEqual(result['ranked_excerpt'],{})
+        self.assertNotIn('ranked_excerpt',result)
 
-    def test_unknown_ranked_fields_are_diagnostic_not_guessed(self):
+    def test_ranked_fields_are_ignored(self):
         result=extract_player({'trophies':1,'ranked':{'unknown_future_score':9500}})
-        self.assertIn('ranked',result['ranked_excerpt'])
+        self.assertNotIn('ranked_excerpt',result)
         self.assertNotIn('elo',result)
+
+    def test_ranked_removed_from_stats_but_kept_in_roles(self):
+        text=panel_text([],'hawkuy','18.10.2026',{'trophies':39420,'elo':9000,'best_elo':9500},'#2QGJPJLJQG')
+        account=text.split('👥')[0]
+        self.assertNotIn('Ranked',account)
+        self.assertNotIn('Elo',account)
+        self.assertIn('⚔️ Ranked',text)
 
     def test_invalid_trophies(self):
         for value in (None,True,'39420',-1):

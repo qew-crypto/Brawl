@@ -88,8 +88,6 @@ def stats():
         result = json.loads(store.setting('stats', '{}'))
     except json.JSONDecodeError:
         result = {}
-    result['elo'] = store.setting('elo', '—')
-    result['best_elo'] = store.setting('best_elo', '—')
     return result
 
 
@@ -178,12 +176,12 @@ async def sync_panel(create=False):
 
 
 async def fetch_stats():
-    """Only documented trophy fields are consumed. Never treat Power Play as Ranked Elo."""
+    """Read documented public account fields; Ranked is only a recruitment direction."""
     async with api_lock:
         value = stats()
         tag = store.setting('tag')
         if not API_TOKEN:
-            value['state'] = 'Ключ Brawl Stars API не настроен; Elo вводится вручную.'
+            value['state'] = 'Ключ Brawl Stars API не настроен; статистика пока не обновляется.'
         else:
             try:
                 async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET), timeout=aiohttp.ClientTimeout(total=20)) as session:
@@ -202,8 +200,6 @@ async def fetch_stats():
                 value['state'] = str(exc)[:200] + ' Последние данные сохранены.'
         # Do not overwrite another account's data if owner changed tag while request was running.
         if store.setting('tag') == tag:
-            value.pop('elo', None)
-            value.pop('best_elo', None)
             store.set('stats', json.dumps(value, ensure_ascii=False))
     await sync_panel()
 
@@ -270,8 +266,7 @@ async def settings_menu(m):
                    'Владелец и секретные ключи меняются только в .env на VPS.', reply_markup=kb(
         [('🌐 IP сервера','server_ip')],
         [('🔗 Подключить группу', 'setgroup')], [('🎮 Тег аккаунта', 'settag')],
-        [('⚔️ Ввести Elo и рекорд', 'setelo')],
-        [('🔎 Диагностика Ranked API','ranked_diagnostic')], [('🔄 Обновить статистику', 'refresh')],
+        [('🔄 Обновить статистику', 'refresh')],
         [('🎮 Обновить очередь','queue_refresh')],
         [('🏠 Главное меню', 'admin')]))
 
@@ -478,23 +473,10 @@ async def handle_owner_input(m, flow):
         tag = normalize_tag(value)
         store.set('tag', tag)
         store.set('stats', '{}')
-        store.set('elo','—')
-        store.set('best_elo','—')
         store.clear_flow(OWNER)
         await m.answer(f'Аккаунт сохранён: <code>{tag}</code>. Статистика прежнего аккаунта сброшена.')
         launch(fetch_stats())
         return
-    if kind == 'elo':
-        values = value.split()
-        if len(values) != 2 or not all(v.isdigit() and 0 <= int(v) <= 1000000 for v in values):
-            raise ValueError('Введи два целых числа: текущее Elo и рекорд. Например: 8500 9200.')
-        if int(values[1]) < int(values[0]):
-            raise ValueError('Рекорд не может быть меньше текущего Elo.')
-        store.set('elo', int(values[0]))
-        store.set('best_elo', int(values[1]))
-        store.clear_flow(OWNER)
-        await sync_panel()
-        return await m.answer('Ranked сохранён. В посте указано, что Elo введено владельцем вручную.')
     if kind in ('accept_time', 'change_time'):
         uid = flow['payload']['uid']
         row = store.app(uid)
@@ -712,17 +694,6 @@ async def handle_callback(c):
         return await admin_menu(m)
     if data == 'settings':
         return await settings_menu(m)
-    if data == 'ranked_diagnostic':
-        value=stats()
-        keys=value.get('api_keys',[])
-        if not keys:
-            return await m.answer('Нет успешного ответа API. Сначала исправьте ключ/IP и нажмите «Обновить статистику».')
-        excerpt=json.dumps(value.get('ranked_excerpt',{}),ensure_ascii=False,indent=2)[:1500]
-        return await m.answer('🔎 <b>Фактический ответ API аккаунта</b>\n'
-                              'Названия полей: <code>'+escape(', '.join(keys))+'</code>\n\n'
-                              'Поля с Ranked / Elo / League в названии:\n<pre>'+escape(excerpt)+'</pre>\n'
-                              'Power Play и ранг бойца не считаются Ranked Elo. '
-                              'Если поля Elo здесь нет, этот ответ API не даёт его. Ключ API в диагностике не показывается.')
     if data == 'server_ip':
         await m.answer('🌐 Определяется исходящий IPv4 сервера…')
         ip=await external_ipv4()
@@ -766,10 +737,9 @@ async def handle_callback(c):
         return await m.answer('Сначала добавь бота администратором в приватную супергруппу. '
                               'Выбери её кнопкой или введи ID вида -1001234567890.\n/cancel — отменить.',
                               reply_markup=ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text='Выбрать группу',request_chat=request)]],resize_keyboard=True,one_time_keyboard=True))
-    if data in ('settag','setelo'):
-        store.set_flow(OWNER,'tag' if data=='settag' else 'elo')
-        return await m.answer('Введи тег аккаунта, например #2QGJPJLJQG.\n/cancel — отмена.' if data=='settag'
-                              else 'Введи текущее Elo и рекорд через пробел: 8500 9200. Это ручные данные, не результат API.\n/cancel — отмена.')
+    if data == 'settag':
+        store.set_flow(OWNER,'tag')
+        return await m.answer('Введи тег аккаунта, например #2QGJPJLJQG.\n/cancel — отмена.')
     if data == 'queue_refresh':
         await sync_queue(create=True)
         return await m.answer('Очередь по расписанию обновлена.')

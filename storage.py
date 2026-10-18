@@ -41,6 +41,19 @@ class Store:
                 self.db.execute('UPDATE applications SET photo=NULL')
             self.db.execute("UPDATE applications SET step=8 WHERE status='draft' AND step>8")
             self.db.execute('PRAGMA user_version=2')
+        if self.db.execute('PRAGMA user_version').fetchone()[0] < 3:
+            self.db.execute("DELETE FROM settings WHERE key IN ('elo','best_elo')")
+            self.db.execute("DELETE FROM flows WHERE kind='elo'")
+            cached=self.db.execute("SELECT value FROM settings WHERE key='stats'").fetchone()
+            if cached:
+                try:
+                    value=json.loads(cached[0])
+                    for key in ('elo','best_elo','api_keys','ranked_excerpt'):
+                        value.pop(key,None)
+                    self.db.execute("UPDATE settings SET value=? WHERE key='stats'",(json.dumps(value,ensure_ascii=False),))
+                except (ValueError,TypeError,AttributeError):
+                    pass
+            self.db.execute('PRAGMA user_version=3')
         # An interruption during Telegram delivery may have delivered a message; do not resend uncertain items.
         self.db.execute("UPDATE deliveries SET status='uncertain' WHERE status='sending'")
         self.db.commit()

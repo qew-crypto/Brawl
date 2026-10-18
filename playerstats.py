@@ -22,10 +22,6 @@ def extract_player(data, now=None):
     club=data.get('club')
     if isinstance(club,dict) and isinstance(club.get('name'),str):
         result['club']=club['name'][:80]
-    # Diagnostic keys/excerpts are public player data only; never auth headers or credentials.
-    result['api_keys']=sorted(str(k)[:80] for k in data.keys())
-    result['ranked_excerpt']={str(k)[:80]:v for k,v in data.items()
-                              if any(term in str(k).lower() for term in ('ranked','elo','league'))}
     result['updated']=(now or datetime.now(MSK)).astimezone(MSK).strftime('%d.%m.%Y %H:%M МСК')
     result['state']='Данные Brawl Stars API актуальны'
     return result

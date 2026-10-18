@@ -82,12 +82,7 @@ def panel_text(rows, owner_username, start, stats, tag):
              '━━━━━━━━━━━━━━━━━━━━',
              f'👤 <b>{name}</b> · <code>{escape(tag)}</code>',
              '', '📊 <b>СТАТИСТИКА АККАУНТА</b>',
-             f'🏆 Кубки: <b>{pretty_number(stats.get("trophies"))}</b>  ┃  Рекорд: <b>{pretty_number(stats.get("highest"))}</b>',
-             f'⚔️ Ranked: <b>{pretty_number(stats.get("elo", "—"))} Elo</b>  ┃  Рекорд: <b>{pretty_number(stats.get("best_elo", "—"))}</b>']
-    if stats.get('elo','—')!='—' or stats.get('best_elo','—')!='—':
-        lines.append('↳ Elo: введено владельцем вручную, не через API.')
-    else:
-        lines.append('↳ Elo: нет подключённого подтверждённого API; доступен ручной ввод.')
+             f'🏆 Кубки: <b>{pretty_number(stats.get("trophies"))}</b>  ┃  Рекорд: <b>{pretty_number(stats.get("highest"))}</b>']
     if any(key in stats for key in ('wins_3v3','wins_solo','wins_duo')):
         lines += ['🎯 <b>Победы</b>',
                   f'3×3: <b>{pretty_number(stats.get("wins_3v3"))}</b>  ·  Solo: <b>{pretty_number(stats.get("wins_solo"))}</b>  ·  Duo: <b>{pretty_number(stats.get("wins_duo"))}</b>']
