@@ -5,8 +5,16 @@ from pathlib import Path
 
 class Store:
     def __init__(self, path):
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(path)
+        try:
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            self.db = sqlite3.connect(path)
+        except (OSError, sqlite3.OperationalError) as exc:
+            raise RuntimeError(
+                f'Не удалось открыть SQLite: {path}. Папка и файл должны быть доступны '
+                'на запись пользователю бота. В Docker используйте обновлённый образ '
+                'и DB_PATH=/app/data/team.sqlite3; в панели подключите постоянный диск '
+                'к /app/data с доступом Read/Write. Существующая база не удалялась.'
+            ) from exc
         self.db.row_factory = sqlite3.Row
         self.db.execute('PRAGMA journal_mode=WAL')
         self.db.executescript('''

@@ -12,4 +12,4 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
       - run: python -m unittest discover -s tests -v
-      - run: python -m py_compile bot.py helpers.py storage.py playqueue.py
+      - run: python -m py_compile bot.py helpers.py storage.py playqueue.py docker_start.py
