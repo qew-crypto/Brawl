@@ -31,28 +31,40 @@ def windows(rows, now):
 
 
 def queue_text(rows, now):
-    active, future = windows(rows,now)
-    lines = ['🎮 ОЧЕРЕДЬ НА АККАУНТ · МСК']
+    now=now.astimezone(MSK)
+    active,future=windows(rows,now)
+    lines=['🎮 <b>ОЧЕРЕДЬ НА АККАУНТ</b>',
+           '<i>Московское время · ежедневное расписание</i>',
+           '━━━━━━━━━━━━━━━━━━━━']
     if active:
-        if len(active) == 1:
-            item = active[0]
-            lines.append(f'🟢 Сейчас очередь {member_label(item["row"])} — до {item["end"]:%H:%M}.')
+        if len(active)==1:
+            item=active[0]
+            lines += ['🟢 <b>СЕЙЧАС ПО РАСПИСАНИЮ</b>',
+                      f'Сейчас очередь {member_label(item["row"])}',
+                      f'🕹 {item["start"]:%H:%M} — <b>{item["end"]:%H:%M} МСК</b>',
+                      '', 'Пожалуйста, не заходите одновременно.',
+                      'Смена игрока — в конце назначенного времени.']
         else:
-            lines.append('⚠️ Пересечение времени в расписании. Согласуйте очередь с владельцем:')
+            lines += ['⚠️ <b>Пересечение времени в расписании</b>',
+                      'Нужно согласовать очередь с владельцем:']
             for item in active[:8]:
-                lines.append(f'• {member_label(item["row"])} — до {item["end"]:%H:%M}')
+                lines.append(f'› {member_label(item["row"])} — до <b>{item["end"]:%H:%M}</b>')
             if len(active)>8:
-                lines.append(f'И ещё {len(active)-8} участников. Владелец должен исправить расписание.')
+                lines.append(f'И ещё {len(active)-8} участников.')
     else:
-        lines += ['⚪ Сейчас на аккаунте нет очереди.',
-                  'Если хотите играть, напишите в этот чат:',
-                  '«Я буду играть на аккаунте до 22:00»',
-                  'Договоритесь в чате, чтобы другие не заходили одновременно. Бот не учитывает эти сообщения.']
+        lines += ['⚪ <b>Сейчас на аккаунте нет очереди</b>',
+                  '', 'Хотите поиграть? Напишите в этот чат:',
+                  '<b>«Я буду играть на аккаунте до 22:00»</b>',
+                  'Укажите своё время, чтобы другие не зашли одновременно.',
+                  'Договорённость остаётся в чате. Бот не учитывает эти сообщения.']
+    lines += ['━━━━━━━━━━━━━━━━━━━━','⏭ <b>СЛЕДУЮЩИЕ ИГРОКИ</b>']
     if future:
-        lines.append('⏭ Далее по расписанию:')
-        for item in future[:3]:
-            when=item['start'].strftime('%d.%m %H:%M')
-            lines.append(f'• {member_label(item["row"])} — {when}–{item["end"]:%H:%M}')
-    lines += ['ℹ️ Очередь — только по ежедневному расписанию.',
-              'Бот не видит фактический вход в Brawl Stars.']
+        for i,item in enumerate(future[:3],1):
+            day='сегодня' if item['start'].date()==now.date() else 'завтра' if item['start'].date()==now.date()+timedelta(days=1) else item['start'].strftime('%d.%m')
+            lines.append(f'{i}. {member_label(item["row"])} · {day}, <b>{item["start"]:%H:%M}–{item["end"]:%H:%M}</b>')
+    else:
+        lines.append('Назначенных слотов пока нет.')
+    lines += ['━━━━━━━━━━━━━━━━━━━━',
+              'ℹ️ Очередь — только по ежедневному расписанию.',
+              '<i>Бот не видит фактический вход в Brawl Stars.</i>']
     return '\n'.join(lines)

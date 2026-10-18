@@ -47,7 +47,7 @@ class HelpersTests(unittest.TestCase):
         text=panel_text(rows,'hawkuy','18.10.2026',{},'#2QGJPJLJQG')
         self.assertLess(len(text),4096)
         self.assertIn('ручной ввод',text)
-        self.assertEqual(text.count('ожидает входа'),10)
+        self.assertEqual(text.count(' ⏳'),10)
         self.assertNotIn('highestPowerPlayPoints',text)
 
 if __name__=='__main__':

@@ -28,6 +28,7 @@ from helpers import FIELDS, RESPONSES, OCCUPATIONS, DIRECTIONS, validate, normal
 from storage import Store
 from playqueue import queue_text
 from netutils import external_ipv4
+from playerstats import extract_player
 
 BASE = Path(__file__).resolve().parent
 ENV_FILE = BASE / '.env'
@@ -194,14 +195,7 @@ async def fetch_stats():
                                       503: 'Технические работы Brawl Stars.'}
                             raise ValueError(errors.get(resp.status, f'Ошибка API HTTP {resp.status}.'))
                         data = await resp.json()
-                        trophies = data.get('trophies')
-                        highest = data.get('highestTrophies')
-                        if not isinstance(trophies, int) or isinstance(trophies, bool):
-                            raise ValueError('API не вернул корректное число кубков.')
-                        value['trophies'] = trophies
-                        value['highest'] = highest if isinstance(highest, int) else '—'
-                        value['updated'] = datetime.now(MSK).strftime('%d.%m.%Y %H:%M МСК')
-                        value['state'] = 'Кубки: официальный API · опрос каждые 5 минут'
+                        value=extract_player(data)
             except (aiohttp.ClientError, asyncio.TimeoutError):
                 value['state'] = 'API недоступен; сохранены последние успешные данные.'
             except (ValueError, TypeError) as exc:
@@ -276,7 +270,8 @@ async def settings_menu(m):
                    'Владелец и секретные ключи меняются только в .env на VPS.', reply_markup=kb(
         [('🌐 IP сервера','server_ip')],
         [('🔗 Подключить группу', 'setgroup')], [('🎮 Тег аккаунта', 'settag')],
-        [('⚔️ Ввести Elo и рекорд', 'setelo')], [('🔄 Обновить статистику', 'refresh')],
+        [('⚔️ Ввести Elo и рекорд', 'setelo')],
+        [('🔎 Диагностика Ranked API','ranked_diagnostic')], [('🔄 Обновить статистику', 'refresh')],
         [('🎮 Обновить очередь','queue_refresh')],
         [('🏠 Главное меню', 'admin')]))
 
@@ -717,6 +712,17 @@ async def handle_callback(c):
         return await admin_menu(m)
     if data == 'settings':
         return await settings_menu(m)
+    if data == 'ranked_diagnostic':
+        value=stats()
+        keys=value.get('api_keys',[])
+        if not keys:
+            return await m.answer('Нет успешного ответа API. Сначала исправьте ключ/IP и нажмите «Обновить статистику».')
+        excerpt=json.dumps(value.get('ranked_excerpt',{}),ensure_ascii=False,indent=2)[:1500]
+        return await m.answer('🔎 <b>Фактический ответ API аккаунта</b>\n'
+                              'Названия полей: <code>'+escape(', '.join(keys))+'</code>\n\n'
+                              'Поля с Ranked / Elo / League в названии:\n<pre>'+escape(excerpt)+'</pre>\n'
+                              'Power Play и ранг бойца не считаются Ranked Elo. '
+                              'Если поля Elo здесь нет, этот ответ API не даёт его. Ключ API в диагностике не показывается.')
     if data == 'server_ip':
         await m.answer('🌐 Определяется исходящий IPv4 сервера…')
         ip=await external_ipv4()
