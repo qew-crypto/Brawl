@@ -1,0 +1,21 @@
+# Copy to /etc/systemd/system/brawl-bot.service after editing User and paths.
+[Unit]
+Description=Brawl Telegram recruitment bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=brawlbot
+WorkingDirectory=/opt/Brawl
+ExecStart=/opt/Brawl/.venv/bin/python /opt/Brawl/bot.py
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/Brawl
+
+[Install]
+WantedBy=multi-user.target
