@@ -5,7 +5,7 @@ import os
 import tempfile
 import unittest
 from types import SimpleNamespace as Obj
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.methods import BanChatMember
 from storage import Store
@@ -59,6 +59,20 @@ class WorkflowTests(unittest.IsolatedAsyncioTestCase):
         b.store.touch(user(uid))
         b.store.run('INSERT INTO applications(user_id,status,answers) VALUES (?,?,?)',
                     (uid,status,json.dumps({'preferred_time':'21:00-22:00'})))
+
+    async def test_owner_can_get_server_ip_without_console(self):
+        c=callback('server_ip')
+        with patch.object(b,'external_ipv4',new=AsyncMock(return_value='203.0.113.15')):
+            await b.handle_callback(c)
+        output=c.message.answer.call_args.args[0]
+        self.assertIn('203.0.113.15',output)
+        self.assertIn('Allowed IPs',output)
+
+    async def test_server_ip_button_is_owner_only(self):
+        with patch.object(b,'external_ipv4',new=AsyncMock()) as check:
+            with self.assertRaises(ValueError):
+                await b.handle_callback(callback('server_ip',200))
+            check.assert_not_awaited()
 
     async def test_group_picker_schema(self):
         await b.handle_callback(callback('setgroup'))

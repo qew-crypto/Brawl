@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import secrets
+import socket
 import hashlib
 from pathlib import Path
 import shutil
@@ -26,6 +27,7 @@ from aiogram.types import (Message, CallbackQuery, ChatJoinRequest, ChatMemberUp
 from helpers import FIELDS, RESPONSES, OCCUPATIONS, DIRECTIONS, validate, normalize_tag, member_label, panel_parts
 from storage import Store
 from playqueue import queue_text
+from netutils import external_ipv4
 
 BASE = Path(__file__).resolve().parent
 ENV_FILE = BASE / '.env'
@@ -183,7 +185,7 @@ async def fetch_stats():
             value['state'] = 'Ключ Brawl Stars API не настроен; Elo вводится вручную.'
         else:
             try:
-                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET), timeout=aiohttp.ClientTimeout(total=20)) as session:
                     async with session.get('https://api.brawlstars.com/v1/players/' + quote(tag, safe=''),
                                            headers={'Authorization': 'Bearer ' + API_TOKEN}) as resp:
                         if resp.status != 200:
@@ -272,6 +274,7 @@ async def settings_menu(m):
                    'Статистика: каждые 5 минут. Часовой пояс: Москва.\n'
                    f'Ключ Brawl API: {"задан" if API_TOKEN else "не задан"}.\n'
                    'Владелец и секретные ключи меняются только в .env на VPS.', reply_markup=kb(
+        [('🌐 IP сервера','server_ip')],
         [('🔗 Подключить группу', 'setgroup')], [('🎮 Тег аккаунта', 'settag')],
         [('⚔️ Ввести Elo и рекорд', 'setelo')], [('🔄 Обновить статистику', 'refresh')],
         [('🎮 Обновить очередь','queue_refresh')],
@@ -714,6 +717,14 @@ async def handle_callback(c):
         return await admin_menu(m)
     if data == 'settings':
         return await settings_menu(m)
+    if data == 'server_ip':
+        await m.answer('🌐 Определяется исходящий IPv4 сервера…')
+        ip=await external_ipv4()
+        return await m.answer(f'🌐 <b>Внешний IPv4 приложения:</b>\n<code>{ip}</code>\n\n'
+                              'Скопируйте его в Allowed IPs при создании ключа на developer.brawlstars.com. '
+                              'Сам ключ добавьте в переменную BRAWL_API_TOKEN в панели хостинга и перезапустите приложение.\n'
+                              'Brawl API запрашивается по IPv4. Если у хостинга меняется исходящий IP или используется '
+                              'маршрутизация через разные прокси, нужен постоянный исходящий IP от поддержки хостинга.')
     if data == 'cancel':
         return await cancel(m,uid)
     if data.startswith('apps:'):
